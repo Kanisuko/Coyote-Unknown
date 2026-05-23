@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace CoyoteUnknown
+namespace CoyoteUnknown.Network
 {
     public static class DGLabWebTemplates
     {

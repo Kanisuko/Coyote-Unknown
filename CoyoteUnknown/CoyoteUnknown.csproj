@@ -73,12 +73,16 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="CoyoteCommand.cs" />
-    <Compile Include="CoyoteFeedbackManager.cs" />
-    <Compile Include="CoyoteMenu.cs" />
+    <Compile Include="Config\ModConfig.cs" />
+    <Compile Include="Network\WebTemplates\IndexPage.cs" />
+    <Compile Include="Network\WebTemplates\PanelPage.cs" />
+    <Compile Include="UI\CoyoteCommand.cs" />
+    <Compile Include="Feedback\CoyoteFeedbackManager.cs" />
+    <Compile Include="UI\CoyoteMenu.cs" />
     <Compile Include="CoyoteUnknownPlugin.cs" />
-    <Compile Include="DGLabServer.cs" />
-    <Compile Include="DGLabWebTemplates.cs" />
+    <Compile Include="Network\DGLabServer.cs" />
+    <Compile Include="Network\DGLabWebTemplates.cs" />
+    <Compile Include="Feedback\WaveformLibrary.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

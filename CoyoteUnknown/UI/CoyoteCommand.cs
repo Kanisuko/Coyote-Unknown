@@ -1,8 +1,9 @@
-﻿using ScavLib.command;
+using ScavLib.command;
 using System.Collections.Generic;
 using UnityEngine;
+using CoyoteUnknown.Network;
 
-namespace CoyoteUnknown
+namespace CoyoteUnknown.UI
 {
     public class CoyoteCommand : BaseCommand
     {
@@ -68,14 +69,17 @@ namespace CoyoteUnknown
 
             string ip = server.GetLocalIP();
             string qrUrl = $"https://www.dungeon-lab.com/app-download.php#DGLAB-SOCKET#ws://{ip}:{DGLabServer.Port}/{server.ClientId}";
+            string localWebUrl = $"http://localhost:{DGLabServer.Port}";
 
-            GUIUtility.systemCopyBuffer = qrUrl;
+            
+            GUIUtility.systemCopyBuffer = localWebUrl;
 
             CoyoteUnknownPlugin.LogToGameConsole("--------------------------------------------------");
             CoyoteUnknownPlugin.LogToGameConsole($"[Coyote Unknown] 配对状态: {(server.IsBound ? "<color=green>已连接</color>" : "<color=orange>等待配对中...</color>")}");
             CoyoteUnknownPlugin.LogToGameConsole($"电脑内网 IP: {ip}");
-            CoyoteUnknownPlugin.LogToGameConsole($"配对链接: {qrUrl}");
-            CoyoteUnknownPlugin.LogToGameConsole("<color=green>[配对链接已自动复制到您的电脑剪贴板]</color>");
+            CoyoteUnknownPlugin.LogToGameConsole($"网页控制台: {localWebUrl}");
+            CoyoteUnknownPlugin.LogToGameConsole("<color=green>[控制台访问链接已自动复制到您的电脑剪贴板，可直接在浏览器中粘贴访问]</color>");
+            CoyoteUnknownPlugin.LogToGameConsole($"扫码配对链接: {qrUrl}");
             CoyoteUnknownPlugin.LogToGameConsole("控制台可用指令： <color=yellow>coyote ui</color> | <color=yellow>coyote status</color> | <color=yellow>coyote stop</color> | <color=yellow>coyote start</color>");
             CoyoteUnknownPlugin.LogToGameConsole("--------------------------------------------------");
         }

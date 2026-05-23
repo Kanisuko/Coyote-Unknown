@@ -1,4 +1,4 @@
-﻿using BepInEx.Logging;
+using BepInEx.Logging;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -9,8 +9,11 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using CoyoteUnknown.Config;
+using CoyoteUnknown.Network.WebTemplates; 
+using Newtonsoft.Json;
 
-namespace CoyoteUnknown
+namespace CoyoteUnknown.Network
 {
     public class DGLabServer
     {
@@ -24,6 +27,12 @@ namespace CoyoteUnknown
         public string ClientId { get; private set; } = "CoyoteUnknown";
         public string TargetId { get; private set; } = "";
         public bool IsBound { get; private set; } = false;
+
+        
+        public int AppStrengthA { get; private set; } = 0;
+        public int AppStrengthB { get; private set; } = 0;
+        public int AppLimitA { get; private set; } = 100; 
+        public int AppLimitB { get; private set; } = 100;
 
         private readonly List<string> webLogs = new List<string>();
         private readonly object logLock = new object();
@@ -83,6 +92,10 @@ namespace CoyoteUnknown
             connectedAppClient = null;
             IsBound = false;
             TargetId = "";
+            AppStrengthA = 0;
+            AppStrengthB = 0;
+            AppLimitA = 100;
+            AppLimitB = 100;
         }
 
         private async Task AcceptClientsLoop(CancellationToken token)
@@ -112,7 +125,6 @@ namespace CoyoteUnknown
                 int bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length, token);
                 string request = Encoding.UTF8.GetString(buffer, 0, bytesRead);
 
-
                 if (Regex.IsMatch(request, "Upgrade: websocket", RegexOptions.IgnoreCase))
                 {
                     var match = Regex.Match(request, @"sec-websocket-key:\s*([^\r\n]+)", RegexOptions.IgnoreCase);
@@ -134,22 +146,19 @@ namespace CoyoteUnknown
                     await SendMessageAsync(initHandshake);
                     await ReceiveLoop(stream, token);
                 }
-
                 else if (request.Contains("GET /api/status"))
                 {
                     string jsonResponse = $"{{\"isBound\":{IsBound.ToString().ToLower()},\"logs\":{GetWebLogsJson()}}}";
                     SendHttpResponse(stream, "application/json", jsonResponse);
                     client.Close();
                 }
-
                 else if (request.Contains("GET /api/test"))
                 {
                     string channel = request.Contains("channel=B") ? "B" : "A";
                     TriggerTestPulse(channel);
-                    SendHttpResponse(stream, "application/json", $"{{\"status\":\"sent\",\"channel\":\"{channel}\"}}");
+                    SendHttpResponse(stream, "application/json", $"{{\"status\":\"sent\",\"channel\":\"{channel}\"}}"); 
                     client.Close();
                 }
-
                 else if (request.Contains("GET /api/setstrength"))
                 {
                     string channel = request.Contains("channel=B") ? "B" : "A";
@@ -160,22 +169,55 @@ namespace CoyoteUnknown
                     SendHttpResponse(stream, "application/json", $"{{\"status\":\"ok\",\"value\":{value}}}");
                     client.Close();
                 }
-
                 else if (request.Contains("GET /api/getconfig"))
                 {
                     JObject cfgJson = new JObject
                     {
-                        ["enableInstant"] = CoyoteUnknownPlugin.EnableInstant.Value,
-                        ["enableContinuous"] = CoyoteUnknownPlugin.EnableContinuous.Value,
-                        ["maxStrengthA"] = CoyoteUnknownPlugin.MaxStrengthA.Value,
-                        ["maxStrengthB"] = CoyoteUnknownPlugin.MaxStrengthB.Value,
-                        ["damageMultiplier"] = CoyoteUnknownPlugin.DamageMultiplier.Value,
-                        ["minHeartRate"] = CoyoteUnknownPlugin.MinHeartRateToShock.Value
+                        ["enableInstant"] = ModConfig.EnableInstant.Value,
+                        ["enableContinuous"] = ModConfig.EnableContinuous.Value,
+                        ["maxStrengthA"] = ModConfig.MaxStrengthA.Value,
+                        ["maxStrengthB"] = ModConfig.MaxStrengthB.Value,
+                        ["damageMultiplier"] = ModConfig.DamageMultiplier.Value,
+                        ["minHeartRate"] = ModConfig.MinHeartRateToShock.Value,
+
+                        ["isProfessionalMode"] = ModConfig.IsProfessionalMode.Value,
+                        ["strengthControlMode"] = ModConfig.StrengthControlMode.Value,
+                        ["useAbsoluteValue"] = ModConfig.UseAbsoluteValue.Value,
+                        ["bloodLossWaveform"] = ModConfig.BloodLossWaveform.Value,
+                        ["painWaveform"] = ModConfig.PainWaveform.Value,
+                        ["heartRateWaveform"] = ModConfig.HeartRateWaveform.Value,
+                        ["adrenalineWaveform"] = ModConfig.AdrenalineWaveform.Value,
+
+                        
+                        ["globalMultiplier"] = ModConfig.GlobalMultiplier.Value,
+                        ["enableModClamp"] = ModConfig.EnableModClamp.Value,
+                        ["modClampA"] = ModConfig.ModClampA.Value,
+                        ["modClampB"] = ModConfig.ModClampB.Value,
+
+                        
+                        ["enableRad"] = ModConfig.EnableRadiation.Value,
+                        ["radMult"] = ModConfig.RadiationMultiplier.Value,
+                        ["radWave"] = ModConfig.RadiationWaveform.Value,
+
+                        ["enableCold"] = ModConfig.EnableCold.Value,
+                        ["coldMult"] = ModConfig.ColdMultiplier.Value,
+                        ["coldWave"] = ModConfig.ColdWaveform.Value,
+
+                        ["enableHypoxia"] = ModConfig.EnableHypoxia.Value,
+                        ["hypoxiaMult"] = ModConfig.HypoxiaMultiplier.Value,
+                        ["hypoxiaWave"] = ModConfig.HypoxiaWaveform.Value,
+
+                        ["enableFrac"] = ModConfig.EnableFracture.Value,
+                        ["fracMult"] = ModConfig.FractureMultiplier.Value,
+                        ["fracWave"] = ModConfig.FractureWaveform.Value,
+
+                        ["enablePoison"] = ModConfig.EnablePoison.Value,
+                        ["poisonMult"] = ModConfig.PoisonMultiplier.Value,
+                        ["poisonWave"] = ModConfig.PoisonWaveform.Value,
                     };
                     SendHttpResponse(stream, "application/json", cfgJson.ToString());
                     client.Close();
                 }
-
                 else if (request.Contains("GET /api/setconfig"))
                 {
                     var matchKey = Regex.Match(request, @"key=([^&\s]+)");
@@ -189,18 +231,16 @@ namespace CoyoteUnknown
                     SendHttpResponse(stream, "application/json", "{\"status\":\"saved\"}");
                     client.Close();
                 }
-
                 else if (request.Contains("GET /panel"))
                 {
-                    SendHttpResponse(stream, "text/html; charset=utf-8", DGLabWebTemplates.GetPanelHtml(GetLocalIP()));
+                    SendHttpResponse(stream, "text/html; charset=utf-8", PanelPage.GetHtml(GetLocalIP()));
                     client.Close();
                 }
-
                 else if (request.Contains("GET / ") || request.Contains("GET /index.html"))
                 {
                     string ip = GetLocalIP();
                     string qrUrl = $"https://www.dungeon-lab.com/app-download.php#DGLAB-SOCKET#ws://{ip}:{Port}/{ClientId}";
-                    SendHttpResponse(stream, "text/html; charset=utf-8", DGLabWebTemplates.GetIndexHtml(ip, qrUrl));
+                    SendHttpResponse(stream, "text/html; charset=utf-8", IndexPage.GetHtml(ip, qrUrl));
                     client.Close();
                 }
                 else
@@ -261,7 +301,6 @@ namespace CoyoteUnknown
                         for (int i = 0; i < payloadLen; i++) payload[i] = (byte)(payload[i] ^ masks[i % 4]);
                     }
 
-
                     if (b1 == 0x89)
                     {
                         await SendPongAsync(payload);
@@ -312,10 +351,32 @@ namespace CoyoteUnknown
                 }
                 else if (type == "msg" && message != null && message.StartsWith("strength-"))
                 {
-                    AddWebLog($"App 电流反馈强度改变: {message}");
+                    ParseStrengthFeedback(message);
                 }
             }
             catch { }
+        }
+
+        
+        
+        
+        private void ParseStrengthFeedback(string rawStrengthMsg)
+        {
+            try
+            {
+                var matches = Regex.Matches(rawStrengthMsg, @"\d+");
+                if (matches.Count >= 4)
+                {
+                    AppStrengthA = int.Parse(matches[0].Value);
+                    AppStrengthB = int.Parse(matches[1].Value);
+                    AppLimitA = int.Parse(matches[2].Value);
+                    AppLimitB = int.Parse(matches[3].Value);
+                }
+            }
+            catch (Exception ex)
+            {
+                log.LogWarning($"[DGLab-Server] 解析 App 强度数据出错: {ex.Message}");
+            }
         }
 
         public async Task SendMessageAsync(string jsonPayload)
@@ -346,6 +407,25 @@ namespace CoyoteUnknown
             catch
             {
                 CloseAppConnection();
+            }
+        }
+
+        
+        
+        
+        public void SendPulse(string channel, string[] pattern)
+        {
+            if (!IsBound) return;
+            try
+            {
+                string ch = channel.ToUpper();
+                string waveJson = JsonConvert.SerializeObject(pattern);
+                string pulseMsg = $"{{\"type\":\"msg\",\"clientId\":\"{ClientId}\",\"targetId\":\"{TargetId}\",\"message\":\"pulse-{ch}:{waveJson}\"}}";
+                _ = SendMessageAsync(pulseMsg);
+            }
+            catch (Exception ex)
+            {
+                log.LogWarning($"[DGLab-Server] 发送脉冲波形出错: {ex.Message}");
             }
         }
 
@@ -386,7 +466,7 @@ namespace CoyoteUnknown
 
         public string GetLocalIP()
         {
-            string ip = CoyoteUnknownPlugin.OverrideLocalIp.Value.Trim();
+            string ip = ModConfig.OverrideLocalIp.Value.Trim();
             return string.IsNullOrEmpty(ip) ? GetLocalIPAddress() : ip;
         }
 
